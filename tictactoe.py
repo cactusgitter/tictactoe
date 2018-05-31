@@ -195,6 +195,10 @@ class TicTacToe(BoxLayout):
 	#Turn 3 possibilities
 	xblock = [[2,0,0],[0,1,0],[0,0,1]]
 	
+	def goto_start_menu(self):
+		root.clear_widgets()
+		root.add_widget(StartMenu())
+	
 	def clicked(self, loc, imgid): #loc = location, imgid = image id
 		a = loc[0]
 		b = loc[1]
@@ -217,47 +221,124 @@ class TicTacToe(BoxLayout):
 		j = 0
 		# check rows
 		while i < 3:
-			print("i = " + str(i))
-			if sum(toe_box[i]) == 3:
-				if toe_box[i][j] == 0:
-					self.play([i][j])
-					break
-				elif toe_box[i][j+1] == 0:
-					self.play([i,j+1])
-					break
-				else:
-					self.play([i,j+2])
-					break
+			j = 0
+			while j < 3:
+				if toe_box[i][j] == 1:
+					j = 3
+				elif sum(toe_box[i]) == 4:
+					if toe_box[i][j] == 0:
+						self.play([i,j])
+						return True
+				j += 1
 			i += 1
+		
+		#check columns
+		i = 0
+		j = 0
+		col_totals = numpy.sum(toe_box, axis=0)
+		while j < 3:
+			i = 0
+			while i < 3:
+				if toe_box[i][j] == 1:
+					i = 3
+				elif col_totals[j] == 4:
+					if toe_box[i][j] == 0:
+						self.play([i,j])
+						return True
+				i += 1
+			j += 1
 
-	#TO DO
+		#check diagonals
+		toptobot = toe_box[0][0] + toe_box[1][1] + toe_box[2][2]
+		bottotop = toe_box[2][0] + toe_box[1][1] + toe_box[0][2]
+		midClear = toe_box[1][1] != 1
+		topClear = toe_box[0][0] != 1 or toe_box[2][2] != 1
+		botclear = toe_box[2][0] != 1 or toe_box[0][2] != 1
+		if midClear == False:
+			return False
+		elif topClear and toptobot == 4:
+			if toe_box[0][0] == 0:
+				self.play([0,0])
+				return True
+			elif toe_box[2][2] == 0:
+				self.play([2,2])
+				return True
+		if botClear and toptobot == 4:
+			if toe_box[2][0] == 0:
+				self.play([2,0])
+				return True
+			elif toe_box[0][2] == 0:
+				self.play([0,2])
+				return True
+		return False
+			
+
+
+	#Block
 	def block_x(self):
 		i = 0
 		j = 0
 		
 		# check rows
 		while i < 3:
+			j = 0
 			while j < 3:
 				if toe_box[i][j] == 2:
 					j = 3
 				elif sum(toe_box[i]) == 2:
 					if toe_box[i][j] == 0:
-						play([i,j])
+						self.play([i,j])
+						return True
 				j += 1
 			i += 1
 		
-		#TODO TO DO
 		#check columns
+		i = 0
+		j = 0
 		col_totals = numpy.sum(toe_box, axis=0)
 		while j < 3:
+			i = 0
 			while i < 3:
 				if toe_box[i][j] == 2:
-					j = 3
-				elif col_totals[0] == 2:
+					i = 3
+				elif col_totals[j] == 2:
 					if toe_box[i][j] == 0:
-						play([i,j])
+						self.play([i,j])
+						return True
 				i += 1
 			j += 1
+			
+		#check diagonals
+		toptobot = toe_box[0][0] + toe_box[1][1] + toe_box[2][2]
+		bottotop = toe_box[2][0] + toe_box[1][1] + toe_box[0][2]
+		
+		if toe_box[1][1] != 1:
+			return False
+		elif toptobot == 2:
+			if toe_box[0][0] == 0:
+				self.play([0,0])
+			else:
+				self.play([2,2])
+			return True
+		elif bottotop == 2:
+			if toe_box[2][0] == 0:
+				self.play([2,0])
+			else:
+				self.play([0,2])
+			return True
+		return False
+	
+	def play_random_block(self):
+		i = 0
+		j = 0
+		while i < 3:
+			while j < 3:
+				if toe_box[i][j] == 0:
+					self.play([i,j])
+					return True
+				j += 1
+			i += 1
+		return False
 	
 	def run_cpu_turn(self):
 		if self.turn == 1:
@@ -265,17 +346,22 @@ class TicTacToe(BoxLayout):
 			if toe_box == self.xmiddle:
 				self.play([0,0])
 			else:
-				self.ids["B2"].source = "o.gif"
-				toe_box[1][1] = 2
+				self.play([1,1])
 				
 		elif self.turn == 3:
 			self.turn += 2
-			print(toe_box)
 			if toe_box == [[2,0,0],[0,1,0],[0,0,1]]: #x blocks themselves
 				self.play([0,2])
-		
-		elif self.turn == 5:
-			self.find_wins()
+			else:
+				self.block_x()
+				
+		elif self.find_wins() == True:
+			print("You lose.")
+			self.goto_start_menu()
+		elif self.block_x() == False:
+			if self.play_random_block() == False:
+				print("It's a draw!")
+				self.goto_start_menu()
 
 # Runs the program	
 if __name__ == '__main__':
