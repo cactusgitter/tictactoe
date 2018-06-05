@@ -93,51 +93,67 @@ Container:
 		on_press: root.quit_game()
 		
 <TicTacToe>:
-	orientation: "vertical"
+	id: tictactoe
 	BoxLayout:
-		orientation: "horizontal"
-		ImageButton:
-			id: A1
-			source: "blank.gif"	
-			on_press: root.clicked([0,0], "A1")
-		ImageButton:
-			id: A2
-			source: "blank.gif"	
-			on_press: root.clicked([0,1], "A2")
-		ImageButton:
-			id: A3
-			source: "blank.gif"
-			on_press: root.clicked([0,2], "A3")
+		orientation: "vertical"
+		BoxLayout:
+			orientation: "horizontal"
+			ImageButton:
+				id: A1
+				source: "blank.gif"	
+				on_press: root.clicked([0,0], "A1")
+			ImageButton:
+				id: A2
+				source: "blank.gif"	
+				on_press: root.clicked([0,1], "A2")
+			ImageButton:
+				id: A3
+				source: "blank.gif"
+				on_press: root.clicked([0,2], "A3")
+					
+		BoxLayout:
+			orientation: "horizontal"
+			ImageButton:
+				id: B1
+				source: "blank.gif"
+				on_press: root.clicked([1,0], "B1")	
+			ImageButton:
+				id: B2
+				source: "blank.gif"
+				on_press: root.clicked([1,1], "B2")
+			ImageButton:
+				id: B3
+				source: "blank.gif"
+				on_press: root.clicked([1,2], "B3")
+					
+		BoxLayout:
+			orientation: "horizontal"
+			ImageButton:
+				id: C1
+				source: "blank.gif"
+				on_press: root.clicked([2,0], "C1")		
+			ImageButton:
+				id: C2
+				source: "blank.gif"
+				on_press: root.clicked([2,1], "C2")
+			ImageButton:
+				id: C3
+				source: "blank.gif"	
+				on_press: root.clicked([2,2], "C3")
 				
+<EndGameScreen>:
+	id: endgamescreen
+	size_hint_y: 0.1
+	pos_hint:{"center_x":1,"center_y":-1}
+	Label:
+		id: winlosetext
+		text: "Game over"
 	BoxLayout:
 		orientation: "horizontal"
-		ImageButton:
-			id: B1
-			source: "blank.gif"
-			on_press: root.clicked([1,0], "B1")	
-		ImageButton:
-			id: B2
-			source: "blank.gif"
-			on_press: root.clicked([1,1], "B2")
-		ImageButton:
-			id: B3
-			source: "blank.gif"
-			on_press: root.clicked([1,2], "B3")
-				
-	BoxLayout:
-		orientation: "horizontal"
-		ImageButton:
-			id: C1
-			source: "blank.gif"
-			on_press: root.clicked([2,0], "C1")		
-		ImageButton:
-			id: C2
-			source: "blank.gif"
-			on_press: root.clicked([2,1], "C2")
-		ImageButton:
-			id: C3
-			source: "blank.gif"	
-			on_press: root.clicked([2,2], "C3")
+		Button:
+			text: "Main Menu"
+		Button:
+			text: "Restart"
 """)
 		global root
 		root = Container()
@@ -183,8 +199,11 @@ class StartMenu(BoxLayout):
 	def quit_game(self):
 		App.get_running_app().stop()
 		
+class EndGameScreen(FloatLayout):
+	pass
+
 # The first menu the user sees
-class TicTacToe(BoxLayout):
+class TicTacToe(FloatLayout):
 	global toe_box
 	global toe_box_ids
 	turn = 1
@@ -194,6 +213,9 @@ class TicTacToe(BoxLayout):
 	
 	#Turn 3 possibilities
 	xblock = [[2,0,0],[0,1,0],[0,0,1]]
+	
+	def endGame(self):
+		self.add_widget(EndGameScreen())
 	
 	def goto_start_menu(self):
 		root.clear_widgets()
@@ -253,7 +275,7 @@ class TicTacToe(BoxLayout):
 		bottotop = toe_box[2][0] + toe_box[1][1] + toe_box[0][2]
 		midClear = toe_box[1][1] != 1
 		topClear = toe_box[0][0] != 1 or toe_box[2][2] != 1
-		botclear = toe_box[2][0] != 1 or toe_box[0][2] != 1
+		botClear = toe_box[2][0] != 1 or toe_box[0][2] != 1
 		if midClear == False:
 			return False
 		elif topClear and toptobot == 4:
@@ -263,7 +285,7 @@ class TicTacToe(BoxLayout):
 			elif toe_box[2][2] == 0:
 				self.play([2,2])
 				return True
-		if botClear and toptobot == 4:
+		if botClear and bottotop == 4:
 			if toe_box[2][0] == 0:
 				self.play([2,0])
 				return True
@@ -317,16 +339,20 @@ class TicTacToe(BoxLayout):
 		elif toptobot == 2:
 			if toe_box[0][0] == 0:
 				self.play([0,0])
+				return True
 			else:
 				self.play([2,2])
-			return True
+				return True
 		elif bottotop == 2:
 			if toe_box[2][0] == 0:
 				self.play([2,0])
+				return True
 			else:
 				self.play([0,2])
+				return True
 			return True
-		return False
+		else:
+			return False
 	
 	def play_random_block(self):
 		i = 0
@@ -352,16 +378,16 @@ class TicTacToe(BoxLayout):
 			self.turn += 2
 			if toe_box == [[2,0,0],[0,1,0],[0,0,1]]: #x blocks themselves
 				self.play([0,2])
-			else:
-				self.block_x()
+			elif self.block_x() == False:
+				self.play_random_block()
 				
 		elif self.find_wins() == True:
-			print("You lose.")
-			self.goto_start_menu()
+			print("game won by cpu")
+			self.endGame()
 		elif self.block_x() == False:
 			if self.play_random_block() == False:
-				print("It's a draw!")
-				self.goto_start_menu()
+				print("game lost")
+				self.endGame()
 
 # Runs the program	
 if __name__ == '__main__':
