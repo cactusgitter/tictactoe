@@ -16,12 +16,14 @@ from kivy.uix.behaviors import ButtonBehavior
 import time
 import random
 
+#TODO get rid of globals where possible
 global toe_box
 global toe_box_ids
+global difficulty
 
 def startup():
 	Config.set('graphics', 'resizable', False)
-	#Config.set('graphics', 'borderless', 1)
+	Config.set('graphics', 'borderless', 1)
 	Config.set('graphics', 'width', 800)
 	Config.set('graphics', 'height', 800)
 	Config.set('graphics', 'top', 50)
@@ -86,6 +88,7 @@ Container:
 		on_press: root.goto_impossible()
 	Button:
 		text: "Tic Tac Toe, CPU = Random"
+		on_press: root.goto_random()
 	Button:
 		text: "Tic Tac Toe, CPU = Trying To Lose"
 	Button:
@@ -143,17 +146,40 @@ Container:
 				
 <EndGameScreen>:
 	id: endgamescreen
-	size_hint_y: 0.1
-	pos_hint:{"center_x":1,"center_y":-1}
 	Label:
-		id: winlosetext
-		text: "Game over"
+		id: backgroundcolorbox
+		size_hint_y: 0.2
+		pos_hint: {'x': 0, 'center_y': 0.5}
+		bcolor: 0,0,0,1
+		canvas.before:
+			Color:
+				rgba: self.bcolor
+			Rectangle:
+				pos: self.pos
+				size: self.size
+				
 	BoxLayout:
-		orientation: "horizontal"
-		Button:
-			text: "Main Menu"
-		Button:
-			text: "Restart"
+		orientation: "vertical"
+		size_hint_y: 0.2
+		pos_hint:{'x':0, 'center_y':.5}
+		Label:
+			id: winlosetext
+			bcolor: 0,0,0,1
+			canvas.before:
+				Color:
+					rgba: self.bcolor
+				Rectangle:
+					pos: self.pos
+					size: self.size
+			text: "Game over"
+		BoxLayout:
+			orientation: "horizontal"
+			Button:
+				text: "Main Menu"
+				on_press: root.goto_start_menu()
+			Button:
+				text: "Restart"
+				on_press: root.restart_game()
 """)
 		global root
 		root = Container()
@@ -185,28 +211,45 @@ class Container(BoxLayout):
 	pass
 	
 class CPU():
-	global toe_box
-	global toe_box_ids
-	toe_box = [[0,0,0],[0,0,0],[0,0,0]] # The array of the tic tac toe box
-	toe_box_ids = [["A1","A2","A3"],["B1","B2","B3"],["C1","C2","C3"]]
-	
+	def __init__(self, *args, **kwargs):
+		global toe_box
+		global toe_box_ids
 
 # The first menu the user sees
 class StartMenu(BoxLayout):
+	def __init__(self, **kwargs):
+		super(StartMenu, self).__init__(**kwargs)
 	def goto_impossible(self):
+		global difficulty
+		difficulty = "impossible"
+		root.clear_widgets()
+		root.add_widget(TicTacToe())
+	def goto_random(self):
+		global difficulty
+		difficulty = "random"
 		root.clear_widgets()
 		root.add_widget(TicTacToe())
 	def quit_game(self):
 		App.get_running_app().stop()
 		
 class EndGameScreen(FloatLayout):
-	pass
+	def goto_start_menu(self):
+		root.clear_widgets()
+		root.add_widget(StartMenu())
+	def restart_game(self):
+		root.clear_widgets()
+		root.add_widget(TicTacToe())
 
 # The first menu the user sees
-class TicTacToe(FloatLayout):
-	global toe_box
-	global toe_box_ids
-	turn = 1
+class TicTacToe(FloatLayout):	
+	def __init__(self, **kwargs):
+		super(TicTacToe, self).__init__(**kwargs)
+		global toe_box
+		global toe_box_ids
+		global difficulty
+		toe_box = [[0,0,0],[0,0,0],[0,0,0]] # The array of the tic tac toe box
+		toe_box_ids = [["A1","A2","A3"],["B1","B2","B3"],["C1","C2","C3"]]
+		self.turn = 1
 	
 	#Turn 1 possibilities
 	xmiddle = [[0,0,0],[0,1,0],[0,0,0]]
@@ -214,8 +257,10 @@ class TicTacToe(FloatLayout):
 	#Turn 3 possibilities
 	xblock = [[2,0,0],[0,1,0],[0,0,1]]
 	
-	def endGame(self):
-		self.add_widget(EndGameScreen())
+	def endGame(self, outcome):
+		e = EndGameScreen()
+		e.ids["winlosetext"].text = outcome
+		self.add_widget(e)
 	
 	def goto_start_menu(self):
 		root.clear_widgets()
@@ -228,8 +273,6 @@ class TicTacToe(FloatLayout):
 			toe_box[a][b] = 1
 			self.ids[imgid].source = "x.gif"
 			self.run_cpu_turn()
-		else:
-			print("Box already taken")
 	
 	def play(self, loc): #loc = location, imgid = image id
 		a = loc[0]
@@ -238,7 +281,7 @@ class TicTacToe(FloatLayout):
 		toe_box[a][b] = 2
 		self.ids[img_id].source = "o.gif"
 	
-	def find_wins(self):
+	def play_winning_move(self):
 		i = 0
 		j = 0
 		# check rows
@@ -308,7 +351,9 @@ class TicTacToe(FloatLayout):
 				if toe_box[i][j] == 2:
 					j = 3
 				elif sum(toe_box[i]) == 2:
-					if toe_box[i][j] == 0:
+					if toe_box[i][0] == 2 or toe_box[i][1] == 2 or toe_box[i][2] == 2:
+						pass
+					elif toe_box[i][j] == 0:
 						self.play([i,j])
 						return True
 				j += 1
@@ -318,18 +363,27 @@ class TicTacToe(FloatLayout):
 		i = 0
 		j = 0
 		col_totals = numpy.sum(toe_box, axis=0)
+		while i < 3:
+			j = 0
+			while j < 3:
+				j += 1
+			i += 1
+		i = 0
+		j = 0
 		while j < 3:
 			i = 0
 			while i < 3:
 				if toe_box[i][j] == 2:
 					i = 3
 				elif col_totals[j] == 2:
-					if toe_box[i][j] == 0:
+					if toe_box[0][j] == 2 or toe_box[1][j] == 2 or toe_box[2][j] == 2:
+						pass
+					elif toe_box[i][j] == 0:
 						self.play([i,j])
 						return True
 				i += 1
 			j += 1
-			
+		
 		#check diagonals
 		toptobot = toe_box[0][0] + toe_box[1][1] + toe_box[2][2]
 		bottotop = toe_box[2][0] + toe_box[1][1] + toe_box[0][2]
@@ -358,6 +412,7 @@ class TicTacToe(FloatLayout):
 		i = 0
 		j = 0
 		while i < 3:
+			j = 0
 			while j < 3:
 				if toe_box[i][j] == 0:
 					self.play([i,j])
@@ -366,28 +421,61 @@ class TicTacToe(FloatLayout):
 			i += 1
 		return False
 	
+	def game_won(self):
+		xoro = 1
+		while xoro < 3:
+			i = 0
+			while i < 3:
+				if toe_box[i][0] == xoro and toe_box[i][1] == xoro and toe_box[i][2] == xoro:
+					print("xoro = " + str(xoro))
+					if xoro == 1:
+						self.endGame("You Win!")
+					else:
+						self.endGame("You Lose!")
+					return True
+				else: i += 1
+			xoro += 1
+	
 	def run_cpu_turn(self):
-		if self.turn == 1:
-			self.turn += 2
-			if toe_box == self.xmiddle:
-				self.play([0,0])
-			else:
-				self.play([1,1])
-				
-		elif self.turn == 3:
-			self.turn += 2
-			if toe_box == [[2,0,0],[0,1,0],[0,0,1]]: #x blocks themselves
-				self.play([0,2])
+		global difficulty
+		if difficulty == "impossible":
+			if self.turn == 1:
+				self.turn += 2
+				if toe_box == self.xmiddle:
+					self.play([0,0])
+				else:
+					self.play([1,1])
+					
+			elif self.turn == 3:
+				self.turn += 2
+				if toe_box == [[2,0,0],[0,1,0],[0,0,1]]: #x blocks themselves
+					self.play([0,2])
+				elif self.block_x() == False:
+					self.play_random_block()
+					
+			elif self.play_winning_move() == True:
+				self.endGame("You lose")
 			elif self.block_x() == False:
-				self.play_random_block()
-				
-		elif self.find_wins() == True:
-			print("game won by cpu")
-			self.endGame()
-		elif self.block_x() == False:
-			if self.play_random_block() == False:
-				print("game lost")
-				self.endGame()
+				if self.play_random_block() == False:
+					self.endGame("It's a draw.")
+		elif difficulty == "random":
+			i = 0
+			j = 0
+			open_spots = []
+			while i < 3:
+				j = 0
+				while j < 3:
+					if toe_box[i][j] == 0:
+						a = ([i,j])
+						open_spots.append([i,j])
+					j += 1
+				i += 1
+			if open_spots == []:
+				self.endGame("It's a draw.")
+			else:
+				r = random.randint(0,len(open_spots) - 1)
+				self.play(open_spots[r])
+				self.game_won()
 
 # Runs the program	
 if __name__ == '__main__':
