@@ -19,11 +19,24 @@ import random
 #TODO get rid of globals where possible
 global toe_box
 global toe_box_ids
-global difficulty
+global glob
+
+class globject():
+	player1	    = "x"
+	player1_img = "x.gif"
+	cpu = "o"
+	cpu_img = "o.gif"
+	difficulty  = "random"
+	opponent = "CPU"
+	current_turn = "x"
+	current_turn_img = "x.gif"
+	gameOver = False
+
+glob = globject()
 
 def startup():
 	Config.set('graphics', 'resizable', False)
-	Config.set('graphics', 'borderless', 1)
+	#Config.set('graphics', 'borderless', 1)
 	Config.set('graphics', 'width', 800)
 	Config.set('graphics', 'height', 800)
 	Config.set('graphics', 'top', 50)
@@ -83,14 +96,27 @@ Container:
 	
 <StartMenu>:
 	orientation: "vertical"
+	Label:
+		text: "Tic Tac Toe"
+	BoxLayout:
+		orientation: "horizontal"
+		Button:
+			text: "CPU : Impossible"
+			on_press: root.goto_xoro("impossible")
+		Button:
+			text: "CPU : Good"
+			on_press: root.goto_xoro("good")
+	BoxLayout:
+		orientation: "horizontal"
+		Button:
+			text: "CPU : Plays Randomly"
+			on_press: root.goto_xoro("random")
+		Button:
+			text: "CPU : Trying to Lose"
+			on_press: root.goto_xoro("loser")
 	Button:
-		text: "Tic Tac Toe, CPU = Impossible"
-		on_press: root.goto_impossible()
-	Button:
-		text: "Tic Tac Toe, CPU = Random"
-		on_press: root.goto_random()
-	Button:
-		text: "Tic Tac Toe, CPU = Trying To Lose"
+		text: "2 Player"
+		on_press: root.goto_2player("2player")
 	Button:
 		text: "Exit"
 		on_press: root.quit_game()
@@ -143,6 +169,21 @@ Container:
 				id: C3
 				source: "blank.gif"	
 				on_press: root.clicked([2,2], "C3")
+				
+<XorOScreen>:
+	id: xoroscreen
+	orientation: "vertical"
+	BoxLayout:
+		ImageButton:
+			id: x
+			source: "x.gif"
+			on_press: root.choose_x()
+		ImageButton:
+			id: o
+			source: "o.gif"	
+			on_press: root.choose_o()
+	Label:
+		text: "Would you like to play as X's or O's?"
 				
 <EndGameScreen>:
 	id: endgamescreen
@@ -202,9 +243,6 @@ class ImageButton(ButtonBehavior, Image):
 		
 	def reset_color(self):
 		self.tint = 0,0,0,0
-		
-	def click_box(self):
-		pass#self.source = "x.gif"
 
 # The primary gui container that holds all the other gui pieces
 class Container(BoxLayout):
@@ -219,16 +257,10 @@ class CPU():
 class StartMenu(BoxLayout):
 	def __init__(self, **kwargs):
 		super(StartMenu, self).__init__(**kwargs)
-	def goto_impossible(self):
-		global difficulty
-		difficulty = "impossible"
+	def goto_xoro(self, difficulty):
+		glob.difficulty = difficulty
 		root.clear_widgets()
-		root.add_widget(TicTacToe())
-	def goto_random(self):
-		global difficulty
-		difficulty = "random"
-		root.clear_widgets()
-		root.add_widget(TicTacToe())
+		root.add_widget(XorOScreen())
 	def quit_game(self):
 		App.get_running_app().stop()
 		
@@ -247,15 +279,105 @@ class TicTacToe(FloatLayout):
 		global toe_box
 		global toe_box_ids
 		global difficulty
-		toe_box = [[0,0,0],[0,0,0],[0,0,0]] # The array of the tic tac toe box
-		toe_box_ids = [["A1","A2","A3"],["B1","B2","B3"],["C1","C2","C3"]]
+		toe_box = [ ["","",""],
+					["","",""],
+					["","",""]] # The array of the tic tac toe box
+		toe_box_ids = [ ["A1","A2","A3"],
+						["B1","B2","B3"],
+						["C1","C2","C3"]] #The ids of the tic tac toe squares
 		self.turn = 1
+		glob.current_turn = "x"
+		glob.current_turn_img = "x.gif"
+		glob.gameOver = False
 	
-	#Turn 1 possibilities
-	xmiddle = [[0,0,0],[0,1,0],[0,0,0]]
+	def run_random(self):
+		open_spaces = []
+		for i in range(3):
+			for j in range(3):
+				if toe_box[i][j] == "":
+					open_spaces.append([i,j])
+		if open_spaces != []:
+			rando = random.randint(0,len(open_spaces)-1)
+			self.play(open_spaces[rando])
+		
+	#Runs the cpu by difficulty, if 2 player mode is selected then the cpu does not make a move
+	def run_cpu_turn(self):
+		if glob.difficulty == "impossible":
+			self.run_impossible()
+		elif glob.difficulty == "good":
+			self.run_good()
+		elif glob.difficulty == "random":
+			self.run_random()
+		elif glob.difficulty == "loser":
+			self.run_loser()
 	
-	#Turn 3 possibilities
-	xblock = [[2,0,0],[0,1,0],[0,0,1]]
+	def change_turn(self):
+		if glob.current_turn == "x":
+			glob.current_turn = "o"
+			glob.current_turn_img = "o.gif"
+		else:
+			glob.current_turn = "x"
+			glob.current_turn_img = "x.gif"
+	
+	#TODO Fix the location so it looks like [i][j] instead of (i,j), you'll have to scour the code for this
+	def play(self, location): #loc = location, imgid = image id
+		a = location[0]
+		b = location[1]
+		img_id = toe_box_ids[a][b]
+		toe_box[a][b] = glob.current_turn
+		self.ids[img_id].source = glob.current_turn_img
+		self.turn += 1
+		if self.checkIfWon() == True:
+			pass
+		elif self.checkIfWon() == False:
+			if self.turn == 10:
+				self.endGame("It's a tie!")
+			else:
+				self.change_turn()
+				if glob.opponent == "CPU" and glob.current_turn != glob.player1:
+						self.run_cpu_turn()
+
+	def clicked(self, location, box_id):
+		x = location[0]
+		y = location[1]
+		if toe_box[x][y] == "" and glob.gameOver == False: #if the square is empty and the game hasn't ended
+			self.play(location)
+	
+	#Checks to see if either player has won the game
+	def checkIfWon(self):
+		who = "x"
+		z = 2
+		
+		while z > 0:
+			#Check for horizontal wins
+			for i in range(3):
+				if toe_box[i][0] == who and toe_box[i][1] == who and toe_box[i][2] == who:
+					self.endGame(who.upper() + " Wins!" )
+					glob.gameOver = True
+					return True
+			
+			#Check for vertical wins
+			for j in range(3):
+				if toe_box[0][j] == who and toe_box[1][j] == who and toe_box[2][j] == who:
+					self.endGame(who.upper() + " Wins!" )
+					glob.gameOver = True
+					return True
+					
+			#Check for Top to Bottom diagonal wins
+			if toe_box[0][0] == who and toe_box[1][1] == who and toe_box[2][2] == who:
+				self.endGame(who.upper() + " Wins!" )
+				glob.gameOver = True
+				return True
+				
+			#Check for Bottom to Top diagonal wins
+			if toe_box[0][2] == who and toe_box[1][1] == who and toe_box[2][0] == who:
+				self.endGame(who.upper() + " Wins!" )
+				glob.gameOver = True
+				return True
+			
+			who = "o"
+			z -= 1
+		return False
 	
 	def endGame(self, outcome):
 		e = EndGameScreen()
@@ -266,216 +388,99 @@ class TicTacToe(FloatLayout):
 		root.clear_widgets()
 		root.add_widget(StartMenu())
 	
-	def clicked(self, loc, imgid): #loc = location, imgid = image id
-		a = loc[0]
-		b = loc[1]
-		if toe_box[a][b] == 0:
-			toe_box[a][b] = 1
-			self.ids[imgid].source = "x.gif"
-			self.run_cpu_turn()
-	
-	def play(self, loc): #loc = location, imgid = image id
-		a = loc[0]
-		b = loc[1]
-		img_id = toe_box_ids[a][b]
-		toe_box[a][b] = 2
-		self.ids[img_id].source = "o.gif"
-	
-	def play_winning_move(self):
-		i = 0
-		j = 0
-		# check rows
-		while i < 3:
-			j = 0
-			while j < 3:
-				if toe_box[i][j] == 1:
-					j = 3
-				elif sum(toe_box[i]) == 4:
-					if toe_box[i][j] == 0:
-						self.play([i,j])
-						return True
-				j += 1
-			i += 1
-		
-		#check columns
-		i = 0
-		j = 0
-		col_totals = numpy.sum(toe_box, axis=0)
-		while j < 3:
-			i = 0
-			while i < 3:
-				if toe_box[i][j] == 1:
-					i = 3
-				elif col_totals[j] == 4:
-					if toe_box[i][j] == 0:
-						self.play([i,j])
-						return True
-				i += 1
-			j += 1
-
-		#check diagonals
-		toptobot = toe_box[0][0] + toe_box[1][1] + toe_box[2][2]
-		bottotop = toe_box[2][0] + toe_box[1][1] + toe_box[0][2]
-		midClear = toe_box[1][1] != 1
-		topClear = toe_box[0][0] != 1 or toe_box[2][2] != 1
-		botClear = toe_box[2][0] != 1 or toe_box[0][2] != 1
-		if midClear == False:
+	def check_if_row_closed(self, row):
+		if player1 in ([row][0],[row][1],[row][2]):
+			return True
+		else:
 			return False
-		elif topClear and toptobot == 4:
-			if toe_box[0][0] == 0:
-				self.play([0,0])
-				return True
-			elif toe_box[2][2] == 0:
-				self.play([2,2])
-				return True
-		if botClear and bottotop == 4:
-			if toe_box[2][0] == 0:
-				self.play([2,0])
-				return True
-			elif toe_box[0][2] == 0:
-				self.play([0,2])
-				return True
-		return False
-			
-
-
-	#Block
-	def block_x(self):
-		i = 0
-		j = 0
 		
-		# check rows
-		while i < 3:
-			j = 0
-			while j < 3:
-				if toe_box[i][j] == 2:
-					j = 3
-				elif sum(toe_box[i]) == 2:
-					if toe_box[i][0] == 2 or toe_box[i][1] == 2 or toe_box[i][2] == 2:
-						pass
-					elif toe_box[i][j] == 0:
-						self.play([i,j])
-						return True
-				j += 1
-			i += 1
-		
-		#check columns
-		i = 0
-		j = 0
-		col_totals = numpy.sum(toe_box, axis=0)
-		while i < 3:
-			j = 0
-			while j < 3:
-				j += 1
-			i += 1
-		i = 0
-		j = 0
-		while j < 3:
-			i = 0
-			while i < 3:
-				if toe_box[i][j] == 2:
-					i = 3
-				elif col_totals[j] == 2:
-					if toe_box[0][j] == 2 or toe_box[1][j] == 2 or toe_box[2][j] == 2:
-						pass
-					elif toe_box[i][j] == 0:
-						self.play([i,j])
-						return True
-				i += 1
-			j += 1
-		
-		#check diagonals
-		toptobot = toe_box[0][0] + toe_box[1][1] + toe_box[2][2]
-		bottotop = toe_box[2][0] + toe_box[1][1] + toe_box[0][2]
-		
-		if toe_box[1][1] != 1:
-			return False
-		elif toptobot == 2:
-			if toe_box[0][0] == 0:
-				self.play([0,0])
-				return True
-			else:
-				self.play([2,2])
-				return True
-		elif bottotop == 2:
-			if toe_box[2][0] == 0:
-				self.play([2,0])
-				return True
-			else:
-				self.play([0,2])
-				return True
+	def check_if_col_closed(self, col):
+		if player1 in ([0][col],[1][col],[2][col]):
 			return True
 		else:
 			return False
 	
-	def play_random_block(self):
-		i = 0
-		j = 0
-		while i < 3:
-			j = 0
-			while j < 3:
-				if toe_box[i][j] == 0:
-					self.play([i,j])
-					return True
-				j += 1
-			i += 1
-		return False
-	
-	def game_won(self):
-		xoro = 1
-		while xoro < 3:
-			i = 0
-			while i < 3:
-				if toe_box[i][0] == xoro and toe_box[i][1] == xoro and toe_box[i][2] == xoro:
-					print("xoro = " + str(xoro))
-					if xoro == 1:
-						self.endGame("You Win!")
-					else:
-						self.endGame("You Lose!")
-					return True
-				else: i += 1
-			xoro += 1
-	
-	def run_cpu_turn(self):
-		global difficulty
-		if difficulty == "impossible":
-			if self.turn == 1:
-				self.turn += 2
-				if toe_box == self.xmiddle:
-					self.play([0,0])
-				else:
-					self.play([1,1])
-					
-			elif self.turn == 3:
-				self.turn += 2
-				if toe_box == [[2,0,0],[0,1,0],[0,0,1]]: #x blocks themselves
-					self.play([0,2])
-				elif self.block_x() == False:
-					self.play_random_block()
-					
-			elif self.play_winning_move() == True:
-				self.endGame("You lose")
-			elif self.block_x() == False:
-				if self.play_random_block() == False:
-					self.endGame("It's a draw.")
-		elif difficulty == "random":
-			i = 0
-			j = 0
-			open_spots = []
-			while i < 3:
-				j = 0
-				while j < 3:
-					if toe_box[i][j] == 0:
-						a = ([i,j])
-						open_spots.append([i,j])
-					j += 1
-				i += 1
-			if open_spots == []:
-				self.endGame("It's a draw.")
+	#start_pos is the left most square to test from, 0 tests from top to bottom, 2 tests from bottom to top
+	def check_if_diag_closed(self, start_pos):
+		if start_pos == 0:
+			if player1 in ([0][0], [1][1], [2][2]):
+				return True
 			else:
-				r = random.randint(0,len(open_spots) - 1)
-				self.play(open_spots[r])
-				self.game_won()
+				return False
+		elif start_pos == 2:
+			if player1 in ([2][0], [1][1], [0][2]):
+				return True
+			else:
+				return False
+
+
+	# TODO FIX THIS MESS!!!!!!!!!!!!!!!!!!!!
+	def test_for_wins(self, test_locs): #test_locs must have 3 locations for this to work
+		blank_spots = 0
+		blank_loc = [0][0]
+		a = [0,0,0]
+		a[0] = toe_box[test_locs[0][0]] [test_locs[0][1]]
+		a[1] = toe_box[test_locs[1][0]] [test_locs[1][1]]
+		a[2] = toe_box[test_locs[2][0]] [test_locs[2][1]]
+		
+		if glob.player1 not in (a[0],a[1],a[2]): #if the player is not blocking
+			blank_spots = 0
+			for i in range(3):
+				if a[i] == "":
+					blank_spots += 1
+					blank_loc = (test_locs[i])
+				
+		if blank_spots == 1:
+			self.play(blank_loc)
+			return True
+					
+	#The CPU looks to see if it can play any moves to win the game
+	def look_for_winning_moves(self):
+		if glob.gameOver == False:
+			#look for wins in the rows
+			for i in range(3):
+				if self.test_for_wins( ((i,0),(i,1),(i,2)) ) == True:
+					return True
+					
+			#look for wins in the columns
+			for i in range(3):
+				if self.test_for_wins( ((0,i),(1,i),(2,i)) ) == True:
+					return True
+			
+			#look for wins in the top to bottom diagonal
+			for i in range(3):
+				if self.test_for_wins( ((0,0),(1,1),(2,2)) ) == True:
+					return True
+
+			#look for wins in the bottom to top diagonal
+			for i in range(3):
+				if self.test_for_wins( ((2,0),(1,1),(0,2)) ) == True:
+					return True
+			return False
+				
+	#TODO Create the good CPU
+	def run_good(self):
+		if self.look_for_winning_moves() == False:
+			self.run_random()
+	
+	# TODO Create the impossible CPU
+	def run_impossible(self):
+		self.run_random()
+		self.check_if_diags_closed([0][0])
+	
+class XorOScreen(BoxLayout):
+	def choose_x(self):
+		glob.player1 = "x"
+		glob.player1_img = "x.gif"
+		glob.cpu = "o"
+		root.clear_widgets()
+		root.add_widget(TicTacToe())
+	def choose_o(self):
+		glob.player1 = "o"
+		glob.player1_img = "o.gif"
+		glob.cpu = "x"
+		root.clear_widgets()
+		root.add_widget(TicTacToe())
 
 # Runs the program	
 if __name__ == '__main__':
